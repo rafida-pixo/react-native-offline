@@ -175,7 +175,7 @@ function createNetworkMiddleware({
         action,
         actionQueue,
       );
-      if (isAnyActionToBeDismissed && !isConnected) {
+      if (isAnyActionToBeDismissed) {
         next(dismissActionsFromQueue(action.type));
       }
     }
