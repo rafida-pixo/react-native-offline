@@ -60,9 +60,22 @@ export default function makeHttpRequest(args?: Options) {
     // @ts-ignore
     const xhr = new XMLHttpRequest(testMethod);
     xhr.open(method, url);
-    xhr.timeout = timeout;
+
+    const combinedHeaders = { ...headers, ...customHeaders };
+    Object.keys(combinedHeaders).forEach(key => {
+      const k = key as keyof typeof headers;
+      xhr.setRequestHeader(k, combinedHeaders[k]);
+    });
+
+    const timeoutId = setTimeout(() => {
+      xhr.abort();
+      reject({
+        status: xhr.status,
+      });
+    }, timeout);
+
     xhr.onload = function onLoad() {
-      // 3xx is a valid response for us, since the server was reachable
+      clearTimeout(timeoutId);
       if (this.status >= 200 && this.status < 400) {
         resolve({
           status: this.status,
@@ -73,22 +86,21 @@ export default function makeHttpRequest(args?: Options) {
         });
       }
     };
+
     xhr.onerror = function onError() {
-      reject({
-        status: this.status,
-      });
-    };
-    xhr.ontimeout = function onTimeOut() {
+      clearTimeout(timeoutId);
       reject({
         status: this.status,
       });
     };
 
-    const combinedHeaders = { ...headers, ...customHeaders };
-    Object.keys(combinedHeaders).forEach(key => {
-      const k = key as keyof typeof headers;
-      xhr.setRequestHeader(k, combinedHeaders[k]);
-    });
+    xhr.ontimeout = function onTimeOut() {
+      clearTimeout(timeoutId);
+      reject({
+        status: this.status,
+      });
+    };
+
     xhr.send(null);
   });
 }
